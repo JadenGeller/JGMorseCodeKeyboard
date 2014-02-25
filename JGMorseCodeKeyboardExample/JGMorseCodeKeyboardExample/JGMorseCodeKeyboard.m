@@ -18,6 +18,11 @@ CGFloat const JGKeyboardLayoutVerticalKeySpacing = 8;
 CGFloat const JGKeyboardLayoutKeyHeightToKeyboardHeightRatio = .52;
 CGFloat const JGKeyboardLayoutSpecialKeyWidthToHeightRatio = 1.2;
 
+CGFloat const JGKeyboardDeleteRepeatInitialLetterDelay = .5;
+CGFloat const JGKeyboardDeleteRepeatLetterDelay = .1;
+CGFloat const JGKeyboardDeleteRepeatWordDelay = .35;
+CGFloat const JGKeyboardDeleteRepeatLetterWordTransitionDelay = 2.5;
+
 @interface JGMorseCodeKeyboard ()
 
 @property (nonatomic) NSArray *portraitConstraints;
@@ -38,6 +43,9 @@ CGFloat const JGKeyboardLayoutSpecialKeyWidthToHeightRatio = 1.2;
 @property (nonatomic, readonly) BOOL shouldCapitalize;
 @property (nonatomic) BOOL shiftEnabled;
 @property (nonatomic) BOOL capsLockEnabled;
+
+@property (nonatomic) NSTimer *deleteTransitionTimer;
+@property (nonatomic) NSTimer *deleteBlockTimer;
 
 @end
 
@@ -112,6 +120,8 @@ CGFloat const JGKeyboardLayoutSpecialKeyWidthToHeightRatio = 1.2;
         _delete.translatesAutoresizingMaskIntoConstraints = NO;
         
         [_delete addTarget:self action:@selector(deletePress) forControlEvents:UIControlEventTouchDown];
+        [_delete addTarget:self action:@selector(deleteRelease) forControlEvents:UIControlEventTouchUpInside];
+        [_delete addTarget:self action:@selector(deleteRelease) forControlEvents:UIControlEventTouchDragOutside];
     }
     return _delete;
 }
@@ -131,10 +141,65 @@ CGFloat const JGKeyboardLayoutSpecialKeyWidthToHeightRatio = 1.2;
 }
 
 -(void)deletePress{
+    [self deleteCharacter];
+    
+    self.deleteBlockTimer = [NSTimer scheduledTimerWithTimeInterval:JGKeyboardDeleteRepeatInitialLetterDelay target:self selector:@selector(deletePressRepeat) userInfo:nil repeats:NO];
+    self.deleteTransitionTimer = [NSTimer scheduledTimerWithTimeInterval:JGKeyboardDeleteRepeatLetterWordTransitionDelay target:self selector:@selector(deleteTypeTransition) userInfo:nil repeats:NO];
+}
+
+-(void)deleteRelease{
+    [self.deleteTransitionTimer invalidate];
+    [self.deleteBlockTimer invalidate];
+
+    self.deleteTransitionTimer = nil;
+    self.deleteBlockTimer = nil;
+}
+
+-(void)deletePressRepeat{
+    [self deleteCharacter];
+    
+    self.deleteBlockTimer = [NSTimer scheduledTimerWithTimeInterval:JGKeyboardDeleteRepeatLetterDelay target:self selector:@selector(deleteCharacter) userInfo:nil repeats:YES];
+}
+
+-(void)deleteTypeTransition{
+    [self.deleteBlockTimer invalidate];
+    [self deleteWord];
+    
+    self.deleteBlockTimer = [NSTimer scheduledTimerWithTimeInterval:JGKeyboardDeleteRepeatWordDelay target:self selector:@selector(deleteWord) userInfo:nil repeats:YES];
+}
+
+-(BOOL)whitespacePrecedesCursor{
+    return ([[self textBeforeCursor] rangeOfCharacterFromSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]].location != NSNotFound);
+}
+
+-(NSString*)textBeforeCursor{
+    UITextPosition *cursorPosition = self.input.selectedTextRange.start;
+    UITextPosition *precedingPosition = [self.input positionFromPosition:cursorPosition offset:-1];
+    UITextRange *range = [self.input textRangeFromPosition:precedingPosition toPosition:cursorPosition];
+    return [self.input textInRange:range];
+    
+}\
+
+-(void)deleteCharacter{
+    [self click];
     [self.input deleteBackward];
 }
 
+-(void)deleteWord{
+    [self click];
+
+    BOOL deleteOnlyCharacters = NO;  // after some point, stop considering whitespace as part of word
+    NSInteger charactersDeleted = 0; // only stop after >= 4 characters are deleted
+    
+    while (!deleteOnlyCharacters || ![self whitespacePrecedesCursor]){
+        deleteOnlyCharacters |= (![self whitespacePrecedesCursor] && charactersDeleted >= 4);
+        [self.input deleteBackward];
+        charactersDeleted++;
+    }
+}
+
 -(void)shiftPress{
+    [self click];
     [self toggleShift];
 }
 
@@ -144,6 +209,7 @@ CGFloat const JGKeyboardLayoutSpecialKeyWidthToHeightRatio = 1.2;
 
 -(void)spacePress{
     [self.input insertText:@" "];
+    [self click];
 }
 
 -(NSDictionary*)viewBindings{
