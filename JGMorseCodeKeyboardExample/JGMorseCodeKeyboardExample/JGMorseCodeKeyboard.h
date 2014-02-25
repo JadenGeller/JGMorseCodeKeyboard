@@ -10,7 +10,7 @@
 
 @interface JGMorseCodeKeyboard : UIView <UIInputViewAudioFeedback>
 
-@property (nonatomic) id<UITextInput, UIKeyInput> input;
+@property (nonatomic) id<UITextInput, UIKeyInput> textInput;
 
 +(JGMorseCodeKeyboard*)keyboardWithInput:(id<UITextInput, UIKeyInput>)input;
 

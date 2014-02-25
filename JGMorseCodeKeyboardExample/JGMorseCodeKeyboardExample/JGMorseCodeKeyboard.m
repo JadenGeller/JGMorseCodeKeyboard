@@ -10,6 +10,9 @@
 #import "JGKeyboardKey.h"
 #import "UIViewController+RotationNotification.h"
 
+BOOL const JGKeyboardDit = YES;
+BOOL const JGKeyboardDah = NO;
+
 CGFloat const JGKeyboardLayoutSideSpacing = 6;
 CGFloat const JGKeyboardLayoutTopSpacing = 10;
 CGFloat const JGKeyboardLayoutBottomSpacing = 6;
@@ -47,6 +50,8 @@ CGFloat const JGKeyboardDeleteRepeatLetterWordTransitionDelay = 2.5;
 @property (nonatomic) NSTimer *deleteTransitionTimer;
 @property (nonatomic) NSTimer *deleteBlockTimer;
 
+@property (nonatomic) NSMutableArray *inputBuffer;
+
 @end
 
 @implementation JGMorseCodeKeyboard
@@ -63,7 +68,7 @@ CGFloat const JGKeyboardDeleteRepeatLetterWordTransitionDelay = 2.5;
 
 +(JGMorseCodeKeyboard*)keyboardWithInput:(id<UITextInput,UIKeyInput>)input{
     JGMorseCodeKeyboard *kb = [[JGMorseCodeKeyboard alloc] init];
-    kb.input = input;
+    kb.textInput = input;
     return kb;
 }
 
@@ -78,23 +83,33 @@ CGFloat const JGKeyboardDeleteRepeatLetterWordTransitionDelay = 2.5;
 
 -(JGKeyboardKey*)dit{
     if (!_dit) {
-        _dit = [[JGKeyboardKey alloc]init];
+        _dit = [JGKeyboardKey lightKey];
         _dit.translatesAutoresizingMaskIntoConstraints = NO;
+        
+        [_delete addTarget:self action:@selector(ditPress) forControlEvents:UIControlEventTouchDown];
+        [_delete addTarget:self action:@selector(ditRelease) forControlEvents:UIControlEventTouchUpInside];
+        [_delete addTarget:self action:@selector(ditCancel) forControlEvents:UIControlEventTouchDragOutside];
+
     }
     return _dit;
 }
 
 -(JGKeyboardKey*)dah{
     if (!_dah) {
-        _dah = [[JGKeyboardKey alloc]init];
+        _dah = [JGKeyboardKey lightKey];
         _dah.translatesAutoresizingMaskIntoConstraints = NO;
+        
+        [_delete addTarget:self action:@selector(dahPress) forControlEvents:UIControlEventTouchDown];
+        [_delete addTarget:self action:@selector(dahRelease) forControlEvents:UIControlEventTouchUpInside];
+        [_delete addTarget:self action:@selector(dahCancel) forControlEvents:UIControlEventTouchDragOutside];
+
     }
     return _dah;
 }
 
 -(JGKeyboardKey*)shift{
     if (!_shift) {
-        _shift = [[JGKeyboardKey alloc]init];
+        _shift = [JGKeyboardKey darkKey];
         _shift.translatesAutoresizingMaskIntoConstraints = NO;
         
         [_shift addTarget:self action:@selector(shiftPress) forControlEvents:UIControlEventTouchDown];
@@ -106,7 +121,7 @@ CGFloat const JGKeyboardDeleteRepeatLetterWordTransitionDelay = 2.5;
 
 -(JGKeyboardKey*)space{
     if (!_space) {
-        _space = [[JGKeyboardKey alloc]init];
+        _space = [JGKeyboardKey lightKey];
         _space.translatesAutoresizingMaskIntoConstraints = NO;
         
         [_space addTarget:self action:@selector(spacePress) forControlEvents:UIControlEventTouchUpInside];
@@ -116,7 +131,7 @@ CGFloat const JGKeyboardDeleteRepeatLetterWordTransitionDelay = 2.5;
 
 -(JGKeyboardKey*)delete{
     if (!_delete) {
-        _delete = [[JGKeyboardKey alloc]init];
+        _delete = [JGKeyboardKey darkKey];
         _delete.translatesAutoresizingMaskIntoConstraints = NO;
         
         [_delete addTarget:self action:@selector(deletePress) forControlEvents:UIControlEventTouchDown];
@@ -124,6 +139,38 @@ CGFloat const JGKeyboardDeleteRepeatLetterWordTransitionDelay = 2.5;
         [_delete addTarget:self action:@selector(deleteRelease) forControlEvents:UIControlEventTouchDragOutside];
     }
     return _delete;
+}
+
+-(NSMutableArray*)inputBuffer{
+    if (!_inputBuffer) {
+        _inputBuffer = [NSMutableArray array];
+    }
+    return _inputBuffer;
+}
+
+-(void)ditPress{
+    [self click];
+    
+}
+
+-(void)ditRelease{
+    [self.inputBuffer addObject:@(JGKeyboardDit)];
+}
+
+-(void)ditCancel{
+    
+}
+
+-(void)dahPress{
+    [self click];
+}
+
+-(void)dahRelease{
+    [self.inputBuffer addObject:@(JGKeyboardDah)];
+}
+
+-(void)dahCancel{
+    
 }
 
 -(BOOL)shouldCapitalize{
@@ -173,16 +220,16 @@ CGFloat const JGKeyboardDeleteRepeatLetterWordTransitionDelay = 2.5;
 }
 
 -(NSString*)textBeforeCursor{
-    UITextPosition *cursorPosition = self.input.selectedTextRange.start;
-    UITextPosition *precedingPosition = [self.input positionFromPosition:cursorPosition offset:-1];
-    UITextRange *range = [self.input textRangeFromPosition:precedingPosition toPosition:cursorPosition];
-    return [self.input textInRange:range];
+    UITextPosition *cursorPosition = self.textInput.selectedTextRange.start;
+    UITextPosition *precedingPosition = [self.textInput positionFromPosition:cursorPosition offset:-1];
+    UITextRange *range = [self.textInput textRangeFromPosition:precedingPosition toPosition:cursorPosition];
+    return [self.textInput textInRange:range];
     
-}\
+}
 
 -(void)deleteCharacter{
     [self click];
-    [self.input deleteBackward];
+    [self.textInput deleteBackward];
 }
 
 -(void)deleteWord{
@@ -193,7 +240,7 @@ CGFloat const JGKeyboardDeleteRepeatLetterWordTransitionDelay = 2.5;
     
     while (!deleteOnlyCharacters || ![self whitespacePrecedesCursor]){
         deleteOnlyCharacters |= (![self whitespacePrecedesCursor] && charactersDeleted >= 4);
-        [self.input deleteBackward];
+        [self.textInput deleteBackward];
         charactersDeleted++;
     }
 }
@@ -201,6 +248,7 @@ CGFloat const JGKeyboardDeleteRepeatLetterWordTransitionDelay = 2.5;
 -(void)shiftPress{
     [self click];
     [self toggleShift];
+    
 }
 
 -(void)shiftDoublePress{
@@ -208,7 +256,7 @@ CGFloat const JGKeyboardDeleteRepeatLetterWordTransitionDelay = 2.5;
 }
 
 -(void)spacePress{
-    [self.input insertText:@" "];
+    [self.textInput insertText:@" "];
     [self click];
 }
 

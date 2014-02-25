@@ -10,4 +10,7 @@
 
 @interface JGKeyboardKey : UIButton
 
++(JGKeyboardKey*)lightKey;
++(JGKeyboardKey*)darkKey;
+
 @end

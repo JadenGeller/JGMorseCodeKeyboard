@@ -22,7 +22,7 @@
         
         self.backgroundColor = [UIColor whiteColor];
         
-        self.layer.shadowColor = [UIColor colorWithWhite:.2 alpha:1].CGColor;
+        self.layer.shadowColor = [UIColor colorWithWhite:.47 alpha:1].CGColor;
         self.layer.shadowOpacity = 1.0;
         self.layer.shadowRadius = 0;
         self.layer.shadowOffset = CGSizeMake(0, 1);
@@ -42,5 +42,15 @@
     // Drawing code
 }
 */
+
++(JGKeyboardKey*)lightKey{
+    return [[JGKeyboardKey alloc]init];
+}
+
++(JGKeyboardKey*)darkKey{
+    JGKeyboardKey *key = [[JGKeyboardKey alloc]init];
+    key.backgroundColor = [UIColor colorWithRed:170/255.0 green:180/255.0 blue:190/255.0 alpha:1];
+    return key;
+}
 
 @end
