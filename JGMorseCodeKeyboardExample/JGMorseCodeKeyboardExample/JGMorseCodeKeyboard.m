@@ -13,13 +13,23 @@
 BOOL const JGKeyboardDit = YES;
 BOOL const JGKeyboardDah = NO;
 
+CGFloat const JGKeyboardBoundsHeightPortrait = 130;
+CGFloat const JGKeyboardBoundsHeightLandscape = 80;
+
+// portrait
+CGFloat const JGKeyboardLayoutKeyHeightToKeyboardHeightRatio = .52;
+CGFloat const JGKeyboardLayoutSpecialKeyWidthToHeightRatio = 1.2;
+
+//landscape
+CGFloat const JGKeyboardLayoutKeyWidthToKeyboardWidthRatio = .28;
+CGFloat const JGKeyboardLayoutSpaceHeightToKeyboardHeightRatio = .4;
+
+//both
 CGFloat const JGKeyboardLayoutSideSpacing = 6;
 CGFloat const JGKeyboardLayoutTopSpacing = 10;
 CGFloat const JGKeyboardLayoutBottomSpacing = 6;
 CGFloat const JGKeyboardLayoutHorizontalKeySpacing = 6;
 CGFloat const JGKeyboardLayoutVerticalKeySpacing = 8;
-CGFloat const JGKeyboardLayoutKeyHeightToKeyboardHeightRatio = .52;
-CGFloat const JGKeyboardLayoutSpecialKeyWidthToHeightRatio = 1.2;
 
 CGFloat const JGKeyboardDeleteRepeatInitialLetterDelay = .5;
 CGFloat const JGKeyboardDeleteRepeatLetterDelay = .1;
@@ -272,7 +282,6 @@ CGFloat const JGKeyboardDeleteRepeatLetterWordTransitionDelay = 2.5;
 -(void)setup{
     self.backgroundColor = [UIColor colorWithWhite:.78 alpha:1];
     self.autoresizingMask = UIViewAutoresizingFlexibleWidth;
-    self.bounds = CGRectMake(0, 0, 1, 130);
     
     [self addSubview:self.dit];
     [self addSubview:self.dah];
@@ -282,6 +291,7 @@ CGFloat const JGKeyboardDeleteRepeatLetterWordTransitionDelay = 2.5;
     [self addSubview:self.delete];
     
     self.isPortrait = YES; // change in future
+    self.bounds = CGRectMake(0, 0, 1, JGKeyboardBoundsHeightPortrait);
     
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(willAnimateRotationToInterfaceOrientation:) name:UIViewControllerRotationNotification object:nil];
     
@@ -290,6 +300,9 @@ CGFloat const JGKeyboardDeleteRepeatLetterWordTransitionDelay = 2.5;
 
 -(void)willAnimateRotationToInterfaceOrientation:(NSNotification*)notification{
     self.isPortrait = UIInterfaceOrientationIsPortrait([notification.object integerValue]);
+    
+    self.bounds = CGRectMake(0, 0, 1, self.isPortrait ? JGKeyboardBoundsHeightPortrait : JGKeyboardBoundsHeightLandscape);
+    
     [self setNeedsUpdateConstraints];
 }
 
@@ -343,6 +356,35 @@ CGFloat const JGKeyboardDeleteRepeatLetterWordTransitionDelay = 2.5;
 -(NSArray*)landscapeConstraints{
     if (!_landscapeConstraints) {
         NSMutableArray *constraints = [NSMutableArray array];
+        
+        // Horizontal spacing
+        [constraints addObjectsFromArray:[NSLayoutConstraint constraintsWithVisualFormat:@"|-side-[dit]-hgap-[shift]-hgap-[delete(==shift)]-hgap-[dah]-side-|" options:0 metrics:self.constantBindings views:self.viewBindings]];
+        
+        // Horizontal equivalence for space
+        [constraints addObject:[NSLayoutConstraint constraintWithItem:self.space attribute:NSLayoutAttributeLeft relatedBy:NSLayoutRelationEqual toItem:self.shift attribute:NSLayoutAttributeLeft multiplier:1 constant:0]];
+        [constraints addObject:[NSLayoutConstraint constraintWithItem:self.space attribute:NSLayoutAttributeRight relatedBy:NSLayoutRelationEqual toItem:self.delete attribute:NSLayoutAttributeRight multiplier:1 constant:0]];
+        
+        // Width of dit and dah
+        [constraints addObject:[NSLayoutConstraint constraintWithItem:self.dit attribute:NSLayoutAttributeWidth relatedBy:NSLayoutRelationEqual toItem:self attribute:NSLayoutAttributeWidth multiplier:JGKeyboardLayoutKeyWidthToKeyboardWidthRatio constant:0]];
+        [constraints addObject:[NSLayoutConstraint constraintWithItem:self.dah attribute:NSLayoutAttributeWidth relatedBy:NSLayoutRelationEqual toItem:self attribute:NSLayoutAttributeWidth multiplier:JGKeyboardLayoutKeyWidthToKeyboardWidthRatio constant:0]];
+        
+        // Vertical spacing for shift and space
+        [constraints addObjectsFromArray:[NSLayoutConstraint constraintsWithVisualFormat:@"V:|-top-[shift]-vgap-[space]-bottom-|" options:0 metrics:self.constantBindings views:self.viewBindings]];
+        
+        // Top equivalences for dit, delete, and dah
+        [constraints addObject:[NSLayoutConstraint constraintWithItem:self.dit attribute:NSLayoutAttributeTop relatedBy:NSLayoutRelationEqual toItem:self.shift attribute:NSLayoutAttributeTop multiplier:1 constant:0]];
+        [constraints addObject:[NSLayoutConstraint constraintWithItem:self.delete attribute:NSLayoutAttributeTop relatedBy:NSLayoutRelationEqual toItem:self.shift attribute:NSLayoutAttributeTop multiplier:1 constant:0]];
+        [constraints addObject:[NSLayoutConstraint constraintWithItem:self.dah attribute:NSLayoutAttributeTop relatedBy:NSLayoutRelationEqual toItem:self.shift attribute:NSLayoutAttributeTop multiplier:1 constant:0]];
+        
+        // Bottom equivalency for delete
+        [constraints addObject:[NSLayoutConstraint constraintWithItem:self.delete attribute:NSLayoutAttributeBottom relatedBy:NSLayoutRelationEqual toItem:self.shift attribute:NSLayoutAttributeBottom multiplier:1 constant:0]];
+        
+        // Bottom constraints for dit and dah
+        [constraints addObject:[NSLayoutConstraint constraintWithItem:self.dit attribute:NSLayoutAttributeBottom relatedBy:NSLayoutRelationEqual toItem:self attribute:NSLayoutAttributeBottom multiplier:1 constant:-JGKeyboardLayoutBottomSpacing]];
+        [constraints addObject:[NSLayoutConstraint constraintWithItem:self.dah attribute:NSLayoutAttributeBottom relatedBy:NSLayoutRelationEqual toItem:self attribute:NSLayoutAttributeBottom multiplier:1 constant:-JGKeyboardLayoutBottomSpacing]];
+        
+        // Height for space
+        [constraints addObject:[NSLayoutConstraint constraintWithItem:self.space attribute:NSLayoutAttributeHeight relatedBy:NSLayoutRelationEqual toItem:self attribute:NSLayoutAttributeHeight multiplier:JGKeyboardLayoutSpaceHeightToKeyboardHeightRatio constant:0]];
         
         _landscapeConstraints = constraints;
     }
